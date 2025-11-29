@@ -5,7 +5,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 
-st.write("Hello World")
+st.write("PREDCompact app currently constructing a cooccurence matrix")
 ### Uploading file
 uploaded_file = st.file_uploader("Upload file", type=["xlsm", "xlsx", "csv"])
 if uploaded_file is not None:
@@ -89,3 +89,4 @@ if uploaded_file is not None:
 
     except Exception as e:
         st.error(f"Failed to read file: {e}. Make sure it contains a sheet named 'raw'.")
+
