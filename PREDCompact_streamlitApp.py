@@ -13,9 +13,13 @@ if uploaded_file is not None:
         data_raw = pd.read_excel(uploaded_file,sheet_name='raw')
 
         ### Cleaning data to extract ingredients
+        try:
+            data_raw = data_raw[ data_raw['Inclusao'] == 1 ]
+            data_raw = data_raw.reset_index(drop=True)
+        except Exception as e:
+            st.error(f"Failed to find column 'Inclusao'. {e}.")  
         data_cleaned = data_raw['Ingrédients'].str.split(',').explode().reset_index()
         data_cleaned['Ingredients_number'] = data_cleaned.groupby('index').cumcount()
-        data_cleaned
 
 
         ### Name standardisation
@@ -23,7 +27,6 @@ if uploaded_file is not None:
             if ("SYNTHETIC FLUORPHLOGOPITE" in element) & (element != "SYNTHETIC FLUORPHLOGOPITE"):
                 print(element)
                 data_cleaned['Ingrédients'].replace(element,"SYNTHETIC FLUORPHLOGOPITE", inplace=True)
-        data_cleaned
 
 
         ### Dataframe of all the ingredients per product
@@ -34,6 +37,9 @@ if uploaded_file is not None:
         )
         data_cleaned_df.insert(0,"Product",data_raw["Nom"])
         pd.set_option('display.max_columns', None)
+        
+        st.write("Products and their ingredients")
+        st.dataframe(data_cleaned_df)
 
 
         ### Plotting for brands and group
@@ -55,12 +61,15 @@ if uploaded_file is not None:
             for j in data_cleaned_df:
                 if j=="Product":
                     continue
+                if j=="NaN":
+                    continue
                 if not data_cleaned_df[j].iloc[i] in ingr_list:
                     ingr_list.append(data_cleaned_df[j].iloc[i])
 
 
         ingredient_matrix = pd.DataFrame(0, index=data_cleaned_df["Product"], columns=ingr_list)
         ingredient_matrix = ingredient_matrix.reset_index().rename(columns={"index": "Product"})
+        ingredient_matrix = ingredient_matrix.drop(columns=np.nan)
 
 
         count=0
@@ -73,6 +82,7 @@ if uploaded_file is not None:
         ingredient_occurence_matrix = pd.DataFrame(0, index=ingr_list, columns=ingr_list)
         ingredient_occurence_matrix = ingredient_occurence_matrix.reset_index().rename(columns={"index": "Ingredients"})
 
+        
         # Cooccurence matrix
         ingredients_only = ingredient_matrix.drop(columns=["Product"])
         M = ingredients_only.values.astype(int)
@@ -85,8 +95,9 @@ if uploaded_file is not None:
         ingredient_occurence_matrix.columns = ingredient_occurence_matrix.columns.fillna("N/A")
         ingredient_occurence_matrix.index = ingredient_occurence_matrix.index.fillna("N/A")
 
+        
+        st.write("Coocurrence Matrix")
         st.dataframe(ingredient_occurence_matrix)
 
     except Exception as e:
         st.error(f"Failed to read file: {e}. Make sure it contains a sheet named 'raw'.")
-
