@@ -5,9 +5,9 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 
-st.write("PREDCompact app currently constructing a cooccurence matrix")
+st.subheader("PREDCompact app")
 ### Uploading file
-uploaded_file = st.file_uploader("Upload file", type=["xlsm", "xlsx", "csv"])
+uploaded_file = st.file_uploader("Upload file :", type=["xlsm", "xlsx", "csv"])
 if uploaded_file is not None:
     try:
         data_raw = pd.read_excel(uploaded_file,sheet_name='raw')
@@ -22,13 +22,6 @@ if uploaded_file is not None:
         data_cleaned['Ingredients_number'] = data_cleaned.groupby('index').cumcount()
 
 
-        ### Name standardisation
-        for element in data_cleaned['Ingrédients']:
-            if ("SYNTHETIC FLUORPHLOGOPITE" in element) & (element != "SYNTHETIC FLUORPHLOGOPITE"):
-                print(element)
-                data_cleaned['Ingrédients'].replace(element,"SYNTHETIC FLUORPHLOGOPITE", inplace=True)
-
-
         ### Dataframe of all the ingredients per product
         data_cleaned_df = data_cleaned.pivot(
             index='index',
@@ -37,8 +30,20 @@ if uploaded_file is not None:
         )
         data_cleaned_df.insert(0,"Product",data_raw["Nom"])
         pd.set_option('display.max_columns', None)
+
         
-        st.write("Products and their ingredients")
+        ### Name standardisation
+        names_dict = set(['SYNTHETIC FLUORPHLOGOPITE','MICA','TALC','CELLULOSE','ZEA MAYS (CORN) STARCH',
+                          'CAPRYLIC/CAPRIC TRIGLYCERIDE','ISOSTEARYL NEOPENTANOATE',
+                          'CALCIUM ALUMINUM BOROSILICATE','ALUMINA','ISOEICOSANE','ALARIA ESCULENTA EXTRACT','CYCLOPENTASILOXANE'])
+        for element in data_cleaned_df[0]:
+            for element_replace in names_dict:
+                if ( element_replace in element ) & (element not in names_dict):
+                    print(element)
+                    data_cleaned_df[0].replace(element, element_replace, inplace=True)
+        
+        st.subheader("Products and their ingredients")
+        st.write("A datagram where each product from the file has a list of their ingredients displayed.")
         st.dataframe(data_cleaned_df)
 
 
@@ -46,13 +51,16 @@ if uploaded_file is not None:
         data_raw.rename(columns={'Groupe(s) / Société(s) cosmétique(s)':'Group'},inplace=True)
 
         # Brands
+        st.subheader("Products and their Brands")
+        st.write("A chart to visualize what brands are represented by amount of products.")
         brand_counts = data_raw['Marque'].value_counts()
         st.bar_chart(data=brand_counts,horizontal=True,sort="count",y="count")
 
 
         # Groups
+        st.write("Products and their Groups")
+        st.write("A chart to visualize what groups are represented by amount of products.")
         brand_counts = data_raw['Group'].value_counts()
-
         st.bar_chart(data=brand_counts,horizontal=True,sort="count")
 
         # Get the full list of unique ingredients
@@ -96,8 +104,12 @@ if uploaded_file is not None:
         ingredient_occurence_matrix.index = ingredient_occurence_matrix.index.fillna("N/A")
 
         
-        st.write("Coocurrence Matrix")
+        st.header("Coocurrence Matrix")
+        st.markdown( '''Coocurrence Matrix = M.T @ M   
+        where M is a Matrix where each row is a product and each column an ingredient values are :  
+        1 ingredient composes this product or 0 if not. ''')
         st.dataframe(ingredient_occurence_matrix)
 
     except Exception as e:
         st.error(f"Failed to read file: {e}. Make sure it contains a sheet named 'raw'.")
+
