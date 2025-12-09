@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-
+import squarify  #algorithm for treemap
+from pypalettes import load_cmap
 
 st.subheader("PREDCompact app")
 ### Uploading file
@@ -22,6 +23,7 @@ if uploaded_file is not None:
         data_cleaned['Ingredients_number'] = data_cleaned.groupby('index').cumcount()
 
 
+
         ### Dataframe of all the ingredients per product
         data_cleaned_df = data_cleaned.pivot(
             index='index',
@@ -38,9 +40,15 @@ if uploaded_file is not None:
                           'CALCIUM ALUMINUM BOROSILICATE','ALUMINA','ISOEICOSANE','ALARIA ESCULENTA EXTRACT','CYCLOPENTASILOXANE'])
         for element in data_cleaned_df[0]:
             for element_replace in names_dict:
+                # Replace INCI elements
                 if ( element_replace in element ) & (element not in names_dict):
                     print(element)
                     data_cleaned_df[0].replace(element, element_replace, inplace=True)
+            # remove May Contain
+            # if ( element in "MAY CONTAIN"):
+                # replace element
+                
+
         
         st.subheader("Products and their ingredients")
         st.write("A datagram where each product from the file has a list of their ingredients displayed.")
@@ -51,17 +59,41 @@ if uploaded_file is not None:
         data_raw.rename(columns={'Groupe(s) / Société(s) cosmétique(s)':'Group'},inplace=True)
 
         # Brands
-        st.subheader("Products and their Brands")
-        st.write("A chart to visualize what brands are represented by amount of products.")
-        brand_counts = data_raw['Marque'].value_counts()
-        st.bar_chart(data=brand_counts,horizontal=True,sort="count",y="count")
+        # st.subheader("Products and their Brands")
+        # st.write("A chart to visualize what brands are represented by amount of products.")
+        # brand_counts = data_raw['Marque'].value_counts()
 
+
+        brands_groups = data_raw.groupby('Group')['Marque'].value_counts().reset_index()
+        cmap = load_cmap("Acadia")
+        category_codes, unique_categories = pd.factorize(brands_groups['Group'])
+        colors = [cmap(code) for code in category_codes]
+
+        # customize the labels
+        labels = [
+            f"{name} ({parent}) {value}"
+            for name, parent, value in zip(brands_groups['Marque'], brands_groups['Group'],brands_groups['count'] )
+        ]
+
+        fig, ax = plt.subplots(figsize=(10, 10))
+        ax.set_axis_off()
+        squarify.plot(
+            sizes=brands_groups['count'],
+            label=labels,
+            color=colors,
+            text_kwargs={"color": "white"},
+            pad=True,
+            ax=ax,
+        )
+        st.pyplot(fig)
+
+        st.dataframe(brands_groups)
 
         # Groups
         st.write("Products and their Groups")
         st.write("A chart to visualize what groups are represented by amount of products.")
         brand_counts = data_raw['Group'].value_counts()
-        st.bar_chart(data=brand_counts,horizontal=True,sort="count")
+        st.bar_chart(data=brand_counts,horizontal=True,sort="count",x_label="Sum of groups")
 
         # Get the full list of unique ingredients
         ingr_list = []
@@ -90,7 +122,6 @@ if uploaded_file is not None:
         ingredient_occurence_matrix = pd.DataFrame(0, index=ingr_list, columns=ingr_list)
         ingredient_occurence_matrix = ingredient_occurence_matrix.reset_index().rename(columns={"index": "Ingredients"})
 
-        
         # Cooccurence matrix
         ingredients_only = ingredient_matrix.drop(columns=["Product"])
         M = ingredients_only.values.astype(int)
@@ -111,5 +142,4 @@ if uploaded_file is not None:
         st.dataframe(ingredient_occurence_matrix)
 
     except Exception as e:
-        st.error(f"Failed to read file: {e}. Make sure it contains a sheet named 'raw'.")
-
+        st.error(f"Failed to read file: {e}")
