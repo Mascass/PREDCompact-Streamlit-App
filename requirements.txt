@@ -6,3 +6,4 @@ openpyxl
 squarify
 pypalettes
 seaborn
+mlxtend
