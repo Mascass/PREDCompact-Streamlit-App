@@ -198,33 +198,31 @@ if uploaded_file is not None:
         # Association rules
         transaction = []
         for i in range(data_cleaned_df.shape[0]):
-            transaction.append([str(data_cleaned_df.values[i,j]) for j in range(data_cleaned_df.shape[1])])
-            
-        transaction = np.array(transaction)
-        print(transaction)
+            transaction.append(
+                data_cleaned_df.iloc[i].dropna().astype(str).tolist()
+            )
 
         te = TransactionEncoder()
         te_ary = te.fit(transaction).transform(transaction)
         dataset = pd.DataFrame(te_ary, columns=te.columns_)
+        
         # Descending order of the most used ingredients
         first50 = df_table["items"].head(50).values
         dataset = dataset.loc[:,first50]
 
-        # Convert dataset into 1-0 encoding
-        def encode_units(x):
-            if x == False:
-                return 0 
-            if x == True:
-                return 1
-            
-        dataset = dataset.applymap(encode_units)
-        st.dataframe(dataset)
-
-
         frequent_itemsets = apriori(dataset, min_support=0.2, use_colnames=True)
         frequent_itemsets['length'] = frequent_itemsets['itemsets'].apply(lambda x: len(x))
         st.write("Number of rules : ",frequent_itemsets.shape[0])
-        frequent_itemsets[(frequent_itemsets['length'] > 2)]
+        frequent_itemsets = frequent_itemsets[~frequent_itemsets["itemsets"].str.contains("+/- (MAY CONTAIN)", regex=False)]
+        
+        st.dataframe(frequent_itemsets)
+
+        rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1.2)
+        rules["antecedents_length"] = rules["antecedents"].apply(lambda x: len(x))
+        rules["consequents_length"] = rules["consequents"].apply(lambda x: len(x))     
+        st.dataframe(rules.sort_values("lift",ascending=False))
+
+
 
     except Exception as e:
         st.error(f"Failed to read file: {e}")
