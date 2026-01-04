@@ -36,20 +36,35 @@ if uploaded_file is not None:
             values='Ingrédients'
         )
         data_cleaned_df.insert(0,"Product",data_raw["Nom"])
+        data_cleaned_df.insert(0,"Type",data_raw["Type(s) de produit - Formulation(s) / Galénique(s)"])
         pd.set_option('display.max_columns', None)
 
         
         ### Name standardisation
-        names_dict = set(['SYNTHETIC FLUORPHLOGOPITE','MICA','TALC','CELLULOSE','ZEA MAYS (CORN) STARCH',
+        # Treating the case of INCI in the first column 
+        names_set = set(['SYNTHETIC FLUORPHLOGOPITE','MICA','TALC','CELLULOSE','ZEA MAYS (CORN) STARCH',
                           'CAPRYLIC/CAPRIC TRIGLYCERIDE','ISOSTEARYL NEOPENTANOATE',
                           'CALCIUM ALUMINUM BOROSILICATE','ALUMINA','ISOEICOSANE','ALARIA ESCULENTA EXTRACT','CYCLOPENTASILOXANE'])
         for element in data_cleaned_df[0]:
-            for element_replace in names_dict:
+            for element_replace in names_set:
                 # Replace INCI elements
-                if ( element_replace in element ) & (element not in names_dict):
+                if ( element_replace in element ) & (element not in names_set):
                     print(element)
                     data_cleaned_df[0].replace(element, element_replace, inplace=True)
+        # Creating dictionary to standardize names of ingredients
+        names_dict = {'CI 77489':'IRON OXYDES ORANGE',
+                      'CI 77491':'IRON OXYDES RED',
+                      'CI 77499':'IRON OXYDES BLACK',
+                      'CI 77492':'IRON OXYDES YELLOW'}  
+        def ingrToken(ingredient):
+            if (str(ingredient) == "+/- (MAY CONTAIN)"):
+                return np.nan
+            if (str(ingredient) in names_dict.keys()):
+                return names_dict[str(ingredient)]
+            return ingredient
+        st.dataframe(data_cleaned_df)
 
+        data_cleaned_df = data_cleaned_df.applymap(ingrToken)
                 
 
         
@@ -139,6 +154,8 @@ if uploaded_file is not None:
                     continue
                 if j=="NaN":
                     continue
+                if j=="Type":
+                    continue
                 if not data_cleaned_df[j].iloc[i] in ingr_list:
                     ingr_list.append(data_cleaned_df[j].iloc[i])
 
@@ -146,41 +163,43 @@ if uploaded_file is not None:
         ingredient_matrix = pd.DataFrame(0, index=data_cleaned_df["Product"], columns=ingr_list)
         ingredient_matrix = ingredient_matrix.reset_index().rename(columns={"index": "Product"})
         ingredient_matrix = ingredient_matrix.drop(columns=np.nan)
-        ingredient_matrix = ingredient_matrix.drop(columns="+/- (MAY CONTAIN)")
 
 
-        # count=0
-        # for i, row in ingredient_matrix.iterrows():
-        #     for ing in ingr_list:
-        #         if ing in data_cleaned_df.loc[count].values:
-        #             ingredient_matrix.at[i, ing] = 1
-        #     count=count+1
-
-        # ingredient_occurence_matrix = pd.DataFrame(0, index=ingr_list, columns=ingr_list)
-        # ingredient_occurence_matrix = ingredient_occurence_matrix.reset_index().rename(columns={"index": "Ingredients"})
+        count=0
+        for i, row in ingredient_matrix.iterrows():
+            for ing in ingr_list:
+                if ing in data_cleaned_df.loc[count].values:
+                    ingredient_matrix.at[i, ing] = 1
+            count=count+1
 
         # Cooccurence matrix
-    #     ingredients_only = ingredient_matrix.drop(columns=["Product"])
-    #     M = ingredients_only.values.astype(int)
-    #     cooccurrence = M.T @ M
-    #     ingredient_occurence_matrix = pd.DataFrame(
-    #         cooccurrence,
-    #         index=ingredients_only.columns,
-    #         columns=ingredients_only.columns
-    #     )
-    #     ingredient_occurence_matrix.columns = ingredient_occurence_matrix.columns.fillna("N/A")
-    #     ingredient_occurence_matrix.index = ingredient_occurence_matrix.index.fillna("N/A")
+        ingredients_only = ingredient_matrix.drop(columns=["Product"])
+        M = ingredients_only.values.astype(int)
+        cooccurrence = M.T @ M
+        ingredient_occurence_matrix = pd.DataFrame(
+            cooccurrence,
+            index=ingredients_only.columns,
+            columns=ingredients_only.columns
+        )
+        ingredient_occurence_matrix.columns = ingredient_occurence_matrix.columns.fillna("N/A")
+        ingredient_occurence_matrix.index = ingredient_occurence_matrix.index.fillna("N/A")
 
         
-    #     st.header("Coocurrence Matrix")
-    #     st.markdown( '''Coocurrence Matrix = M.T @ M   
-    #     where M is a Matrix where each row is a product and each column an ingredient values are :  
-    #     1 ingredient composes this product or 0 if not. ''')
-    #     st.dataframe(ingredient_occurence_matrix)
+        st.header("Coocurrence Matrix")
+        st.markdown( '''Coocurrence Matrix = M.T @ M   
+        where M is a Matrix where each row is a product and each column an ingredient values are :  
+        1 ingredient composes this product or 0 if not. ''')
+        st.dataframe(ingredient_occurence_matrix)
+
+
+        dataplot = sns.heatmap(ingredient_occurence_matrix.head(10), annot=True, cmap="coolwarm")
+        st.pyplot(dataplot.get_figure())
+
 
     
         # Association rules based on data_cleaned_df
         data_cleaned_df = data_cleaned_df.drop(columns="Product")
+        data_cleaned_df = data_cleaned_df.drop(columns="Type")
         st.dataframe(data_cleaned_df)
 
         # Find the most used ingredients by sorting by number of occurences
@@ -213,13 +232,14 @@ if uploaded_file is not None:
         frequent_itemsets = apriori(dataset, min_support=0.2, use_colnames=True)
         frequent_itemsets['length'] = frequent_itemsets['itemsets'].apply(lambda x: len(x))
         st.write("Number of rules : ",frequent_itemsets.shape[0])
-        frequent_itemsets = frequent_itemsets[~frequent_itemsets["itemsets"].str.contains("+/- (MAY CONTAIN)", regex=False)]
         
+        st.write("Apriori algorithm frequent itemsets")
         st.dataframe(frequent_itemsets)
 
         rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1.2)
         rules["antecedents_length"] = rules["antecedents"].apply(lambda x: len(x))
         rules["consequents_length"] = rules["consequents"].apply(lambda x: len(x))     
+        st.write("Association rules")
         st.dataframe(rules.sort_values("lift",ascending=False))
 
 
