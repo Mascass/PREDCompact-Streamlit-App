@@ -192,11 +192,6 @@ if uploaded_file is not None:
         1 ingredient composes this product or 0 if not. ''')
         st.dataframe(ingredient_occurence_matrix)
 
-        # Heat map
-        st.markdown('Heatmap (protoype)')
-        dataplot = sns.heatmap(ingredient_occurence_matrix.head(10), annot=True, cmap="coolwarm")
-        st.pyplot(dataplot.get_figure())
-
 
     
         # Association rules based on data_cleaned_df
@@ -249,6 +244,7 @@ if uploaded_file is not None:
 
     except Exception as e:
         st.error(f"Failed to read file: {e}")
+
 
 
 
