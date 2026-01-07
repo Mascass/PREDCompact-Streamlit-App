@@ -71,13 +71,29 @@ if uploaded_file is not None:
         st.write("A datagram where each product from the file has a list of their ingredients displayed.")
         st.dataframe(data_cleaned_df)
 
+        data_typecount = data_cleaned_df.groupby('Type')['Product'].value_counts().reset_index()
+        data_typecount = data_typecount["Type"].value_counts().reset_index(name="count")
+
+        # Types of product
+        st.subheader('Data grouped by `Type` of products')
+        fig, ax = plt.subplots(figsize=(10, 12))
+        ax.barh(
+            data_typecount['Type'],
+            data_typecount['count']
+        )
+        ax.set_xlabel("Types of products")
+        ax.set_ymargin(0)
+        
+        st.pyplot(fig)
+        st.dataframe(data_typecount)
+
 
         ### Plotting for brands and group
         data_raw.rename(columns={'Groupe(s) / Société(s) cosmétique(s)':'Group'},inplace=True)
 
         # Brands
         st.subheader("Products and their Brands")
-        st.write("A chart to visualize what brands are represented by amount of products.")
+        st.write("A chart to visualize what brands are represented by amount of products in the dataset.")
 
 
         brands_groups = data_raw.groupby('Group')['Marque'].value_counts().reset_index()
@@ -192,10 +208,15 @@ if uploaded_file is not None:
         1 ingredient composes this product or 0 if not. ''')
         st.dataframe(ingredient_occurence_matrix)
 
+        # Heat map
+        # st.markdown('Heatmap (protoype)')
+        # dataplot = sns.heatmap(ingredient_occurence_matrix.head(10), annot=True, cmap="coolwarm")
+        # st.pyplot(dataplot.get_figure())
+
 
     
         # Association rules based on data_cleaned_df
-        st.markdown('This is the data used for the association rules algorithm, it still needs cleaning (CI 77XXX)')
+        st.markdown('This is the data used for the association rules algorithm. Note : it still needs cleaning (CI 77XXX)')
         data_cleaned_df = data_cleaned_df.drop(columns="Product")
         data_cleaned_df = data_cleaned_df.drop(columns="Type")
         st.dataframe(data_cleaned_df)
@@ -244,7 +265,6 @@ if uploaded_file is not None:
 
     except Exception as e:
         st.error(f"Failed to read file: {e}")
-
 
 
 
