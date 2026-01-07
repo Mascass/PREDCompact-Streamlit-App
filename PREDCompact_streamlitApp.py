@@ -62,7 +62,6 @@ if uploaded_file is not None:
             if (str(ingredient) in names_dict.keys()):
                 return names_dict[str(ingredient)]
             return ingredient
-        st.dataframe(data_cleaned_df)
 
         data_cleaned_df = data_cleaned_df.applymap(ingrToken)
                 
@@ -105,6 +104,12 @@ if uploaded_file is not None:
         st.pyplot(fig)
 
 
+        st.dataframe(brands_groups)
+
+        # Groups
+        st.subheader("Products and their Groups")
+        st.write("A chart to visualize what groups are represented by amount of products.")
+
         # Group tree map
         groups = data_raw.groupby('Group')['Group'].value_counts().reset_index()
         cmap = load_cmap("Acadia")
@@ -129,11 +134,7 @@ if uploaded_file is not None:
         )
         st.pyplot(fig)
 
-        st.dataframe(brands_groups)
-
-        # Groups
-        st.write("Products and their Groups")
-        st.write("A chart to visualize what groups are represented by amount of products.")
+        # Group horizontal bar chart
         brand_counts = data_raw['Group'].value_counts()
 
         fig, ax = plt.subplots(figsize=(10, 12))
@@ -191,13 +192,15 @@ if uploaded_file is not None:
         1 ingredient composes this product or 0 if not. ''')
         st.dataframe(ingredient_occurence_matrix)
 
-
+        # Heat map
+        st.markdown('Heatmap (protoype)')
         dataplot = sns.heatmap(ingredient_occurence_matrix.head(10), annot=True, cmap="coolwarm")
         st.pyplot(dataplot.get_figure())
 
 
     
         # Association rules based on data_cleaned_df
+        st.markdown('This is the data used for the association rules algorithm, it still needs cleaning (CI 77XXX)')
         data_cleaned_df = data_cleaned_df.drop(columns="Product")
         data_cleaned_df = data_cleaned_df.drop(columns="Type")
         st.dataframe(data_cleaned_df)
